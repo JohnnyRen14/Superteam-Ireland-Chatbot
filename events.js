@@ -472,23 +472,7 @@ class EventsSystem {
           elementText: eventData.elementText
         };
 
-        // Special handling for Talent Hub events - set to next Friday but preserve the time
-        if (event.title.toLowerCase().includes('talent hub') || event.title.toLowerCase().includes('friday')) {
-          const nextFriday = this.getNextFriday();
-          // If we have a parsed time, use it instead of the default 6 PM
-          if (eventData.timeText) {
-            const time24Match = eventData.timeText.match(/^(\d{1,2}):(\d{2})$/);
-            if (time24Match) {
-              let hours = parseInt(time24Match[1]);
-              const minutes = parseInt(time24Match[2]);
-              
-              // Use the time as-is in 24-hour format
-              
-              nextFriday.setHours(hours, minutes, 0, 0);
-            }
-          }
-          event.date = nextFriday;
-        }
+        // Use the actual parsed date from Luma, don't override it
         
         // For other events, if we only got a time and it's in the past today, 
         // assume it's for tomorrow or next occurrence
@@ -631,10 +615,7 @@ class EventsSystem {
     // Try to get a better date - if we can't parse the date text, use a fallback
     let eventDate = this.parseLumaDate(dateText, timeText);
     
-    // If the parsed date is today or in the past, try to set it to next Friday for Talent Hub events
-    if (title.toLowerCase().includes('talent hub') || title.toLowerCase().includes('friday')) {
-      eventDate = this.getNextFriday();
-    }
+    // Use the actual parsed date from Luma, don't override it
 
     const event = {
       title: title,
