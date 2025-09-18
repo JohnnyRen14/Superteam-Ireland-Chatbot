@@ -819,22 +819,12 @@ class EventsSystem {
 
   getUpcomingEvents(limit = 5) {
     const now = new Date();
-    console.log(`getUpcomingEvents called - total events: ${this.events.length}`);
-    console.log('All events:', this.events.map(e => ({ title: e.title, date: e.date })));
-    
     const upcoming = this.events
       .filter(event => event.date >= now)
       .sort((a, b) => a.date - b.date)
       .slice(0, limit);
 
-    console.log(`Filtered upcoming events: ${upcoming.length}`);
-    
-    if (upcoming.length > 0) {
-      return upcoming;
-    } else {
-      console.log('No upcoming events, using fallback');
-      return this.getFallbackEvents();
-    }
+    return upcoming.length > 0 ? upcoming : this.getFallbackEvents();
   }
 
   formatEventResponse(events) {

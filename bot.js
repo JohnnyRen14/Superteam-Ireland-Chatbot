@@ -218,9 +218,7 @@ Choose what you'd like to know about:`;
 
   async handleEvents(ctx) {
     try {
-      console.log('handleEvents called - fetching events...');
       const events = await this.events.getUpcomingEvents();
-      console.log(`Found ${events.length} events:`, events.map(e => e.title));
       const message = this.events.formatEventResponse(events);
       await ctx.reply(message, { parse_mode: 'Markdown' });
       await this.sendFollowUpMessage(ctx);
