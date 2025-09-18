@@ -38,14 +38,16 @@ class BountiesSystem {
         const fs = require('fs');
         const path = require('path');
         
-        // Common Chrome paths on Render - prioritize stable installation
+        // Common Chrome paths on Render - try multiple approaches
         const possiblePaths = [
           '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
           '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
           '/opt/render/.cache/puppeteer/chrome/linux-140.0.7339.82/chrome-linux64/chrome',
+          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
           '/usr/bin/google-chrome',
           '/usr/bin/chromium-browser',
-          '/usr/bin/chromium'
+          '/usr/bin/chromium',
+          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome'
         ];
         
         for (const chromePath of possiblePaths) {
@@ -66,6 +68,24 @@ class BountiesSystem {
           } else if (fs.existsSync(chromePath)) {
             executablePath = chromePath;
             break;
+          }
+        }
+        
+        // If still no Chrome found, try to find any Chrome installation in the cache directory
+        if (!executablePath) {
+          try {
+            const cacheDir = '/opt/render/.cache/puppeteer';
+            if (fs.existsSync(cacheDir)) {
+              const chromeDir = fs.readdirSync(cacheDir).find(dir => dir.startsWith('chrome'));
+              if (chromeDir) {
+                const chromePath = path.join(cacheDir, chromeDir, 'chrome-linux64', 'chrome');
+                if (fs.existsSync(chromePath)) {
+                  executablePath = chromePath;
+                }
+              }
+            }
+          } catch (e) {
+            // Continue if this fails
           }
         }
       }
