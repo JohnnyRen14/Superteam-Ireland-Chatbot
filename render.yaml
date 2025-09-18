@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: superteam-ireland-bot
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BOT_TOKEN
+        sync: false
+      - key: DATABASE_PATH
+        value: ./bot.db
+      - key: BOUNTIES_FEED_URL
+        value: https://earn.superteam.fun/search?q=ireland
+      - key: EVENTS_FEED_URL
+        value: https://luma.com/SuperteamIE?k=c&period=past
+      - key: RATE_LIMIT_MESSAGES
+        value: 10
+      - key: RATE_LIMIT_WINDOW
+        value: 60
+      - key: BOUNTY_CHECK_INTERVAL
+        value: "0 */6 * * *"
+      - key: EVENTS_CHECK_INTERVAL
+        value: "0 */12 * * *"
+      - key: BOT_USERNAME
+        value: superteam_ireland_bot

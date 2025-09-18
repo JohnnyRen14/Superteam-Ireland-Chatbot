@@ -1,0 +1,37 @@
+{
+  "name": "superteam-ireland-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for Superteam Ireland with Q&A, events, and bounties",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "jest"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "superteam",
+    "ireland",
+    "nodejs"
+  ],
+  "author": "Superteam Ireland",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.3.1",
+    "node-ical": "^0.20.1",
+    "puppeteer": "^24.20.0",
+    "rss-parser": "^3.13.0",
+    "sqlite3": "^5.1.6",
+    "telegraf": "^4.15.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
