@@ -811,10 +811,16 @@ class EventsSystem {
   }
 
   getFallbackEvents() {
-    // Return empty array instead of hardcoded events
-    // This forces the bot to show "No upcoming events found" message
-    // rather than misleading hardcoded events
-    return [];
+    // Return a helpful message instead of empty array
+    // This provides better user experience when scraping fails
+    return [{
+      title: 'Events temporarily unavailable',
+      date: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+      location: 'Check back later',
+      link: config.EVENTS_FEED_URL,
+      source: 'Fallback',
+      description: 'We\'re having trouble fetching events right now. Please check our Luma calendar directly or try again later.'
+    }];
   }
 
   getUpcomingEvents(limit = 5) {

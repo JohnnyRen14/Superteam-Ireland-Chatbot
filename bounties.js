@@ -384,11 +384,11 @@ class BountiesSystem {
 
   getFallbackBounties() {
     return [{
-      title: 'No Bounties Currently Available',
-      prize: 'TBD',
+      title: 'Bounties temporarily unavailable',
+      prize: 'Check back later',
       deadline: 'TBD',
       link: config.BOUNTIES_FEED_URL,
-      description: 'No active bounties found for Ireland. Check back later or visit our bounties page to see all available opportunities!'
+      description: 'We\'re having trouble fetching bounties right now. Please check our Superteam Earn page directly or try again later.'
     }];
   }
 

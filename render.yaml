@@ -3,7 +3,7 @@ services:
     name: superteam-ireland-bot
     env: node
     plan: free
-    buildCommand: npm install && npx puppeteer browsers install chrome && npx puppeteer browsers list
+    buildCommand: npm install && npx puppeteer browsers install chrome@140.0.7339.82
     startCommand: node index.js
     envVars:
       - key: NODE_ENV
