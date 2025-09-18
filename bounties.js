@@ -57,7 +57,7 @@ class BountiesSystem {
       const $ = cheerio.load(response.data);
       const bounties = [];
 
-      // Simple approach - look for bounty elements
+      // Look for bounty elements
       $('[class*="bounty"], [class*="card"], [class*="item"]').each((index, element) => {
         try {
           const $element = $(element);
