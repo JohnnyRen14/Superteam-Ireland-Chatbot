@@ -13,19 +13,7 @@ class BountiesSystem {
     try {
       console.log('Fetching bounties from Superteam Earn...');
       
-      // First try simple HTTP request (works on Render free tier)
-      let bounties = await this.fetchBountiesSimple();
-      
-      if (bounties.length > 0) {
-        this.bounties = bounties;
-        this.lastFetch = new Date();
-        console.log(`Fetched ${bounties.length} bounties (simple method)`);
-        return bounties;
-      }
-      
-      // If simple method fails, try Puppeteer
-      console.log('Simple method failed, trying Puppeteer...');
-      bounties = await this.fetchBountiesWithPuppeteer();
+      const bounties = await this.fetchBountiesWithPuppeteer();
       
       this.bounties = bounties;
       this.lastFetch = new Date();
@@ -38,55 +26,6 @@ class BountiesSystem {
     }
   }
 
-  async fetchBountiesSimple() {
-    try {
-      console.log('Fetching bounties (simple method):', config.BOUNTIES_FEED_URL);
-      
-      const response = await axios.get(config.BOUNTIES_FEED_URL, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1'
-        },
-        timeout: 10000
-      });
-
-      const $ = cheerio.load(response.data);
-      const bounties = [];
-
-      // Look for bounty elements
-      $('[class*="bounty"], [class*="card"], [class*="item"]').each((index, element) => {
-        try {
-          const $element = $(element);
-          const title = $element.find('h1, h2, h3, h4, h5, h6, [class*="title"], [class*="name"]').first().text().trim();
-          const description = $element.find('[class*="description"], [class*="content"], p').first().text().trim();
-          const reward = $element.find('[class*="reward"], [class*="prize"], [class*="amount"]').first().text().trim();
-          const link = $element.find('a').first().attr('href');
-
-          if (title && title.length > 3) {
-            bounties.push({
-              title: title,
-              description: description || 'No description available',
-              reward: reward || 'Reward TBD',
-              link: link ? (link.startsWith('http') ? link : `https://earn.superteam.fun${link}`) : config.BOUNTIES_FEED_URL
-            });
-          }
-        } catch (error) {
-          console.error('Error parsing bounty element:', error.message);
-        }
-      });
-
-      console.log(`Found ${bounties.length} bounties from simple scraping`);
-      return bounties;
-
-    } catch (error) {
-      console.error('Error fetching bounties (simple method):', error.message);
-      return [];
-    }
-  }
 
   async fetchBountiesWithPuppeteer() {
     let browser;
