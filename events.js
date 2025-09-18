@@ -694,7 +694,8 @@ class EventsSystem {
       }
 
       if (lowerText.includes('next friday') || lowerText.includes('friday')) {
-        return this.getNextFriday();
+        // Don't hardcode Friday dates, let the actual date parsing handle it
+        return new Date();
       }
 
       // Try to parse specific date patterns from Luma
@@ -796,14 +797,6 @@ class EventsSystem {
     return months[monthName.toLowerCase()] || 0;
   }
 
-  getNextFriday() {
-    const now = new Date();
-    const daysUntilFriday = (5 - now.getDay() + 7) % 7;
-    const nextFriday = new Date(now);
-    nextFriday.setDate(now.getDate() + (daysUntilFriday === 0 ? 7 : daysUntilFriday));
-    nextFriday.setHours(18, 0, 0, 0); // 6 PM
-    return nextFriday;
-  }
 
   removeDuplicateEvents(events) {
     const seen = new Set();
@@ -818,29 +811,10 @@ class EventsSystem {
   }
 
   getFallbackEvents() {
-    const now = new Date();
-    const nextFriday = this.getNextFriday();
-    const followingFriday = new Date(nextFriday);
-    followingFriday.setDate(followingFriday.getDate() + 7);
-    
-    return [
-      {
-        title: 'Talent Hub Friday - Weekly Networking',
-        date: nextFriday,
-        location: 'Dublin, Ireland',
-        link: `${config.EVENTS_FEED_URL}?q=talent+hub+friday`,
-        source: 'Luma Calendar',
-        description: 'Weekly networking event for the Superteam Ireland community. Join us for presentations, networking, and community updates.'
-      },
-      {
-        title: 'BuildStation Workshop - Solana Development',
-        date: followingFriday,
-        location: 'Dublin, Ireland',
-        link: `${config.EVENTS_FEED_URL}?q=buildstation`,
-        source: 'Luma Calendar',
-        description: 'Hands-on workshop covering Solana smart contract development, DeFi protocols, and NFT creation.'
-      }
-    ];
+    // Return empty array instead of hardcoded events
+    // This forces the bot to show "No upcoming events found" message
+    // rather than misleading hardcoded events
+    return [];
   }
 
   getUpcomingEvents(limit = 5) {
