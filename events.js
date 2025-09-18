@@ -168,8 +168,8 @@ class EventsSystem {
       const $ = cheerio.load(response.data);
       const events = [];
 
-      // Look for event elements - this is a simplified approach
-      $('[data-testid="event-card"], .event-card, .event-item, [class*="event"]').each((index, element) => {
+      // Simple approach - look for event elements
+      $('[class*="event"], [class*="card"], [class*="item"]').each((index, element) => {
         try {
           const $element = $(element);
           const title = $element.find('h1, h2, h3, h4, h5, h6, [class*="title"], [class*="name"]').first().text().trim();

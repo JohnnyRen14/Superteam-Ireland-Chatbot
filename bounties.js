@@ -57,105 +57,27 @@ class BountiesSystem {
       const $ = cheerio.load(response.data);
       const bounties = [];
 
-      // Look for actual bounty content, not navigation elements
-      const bountySelectors = [
-        '[data-testid*="bounty"]',
-        '[data-testid*="card"]',
-        '[data-testid*="item"]',
-        '.bounty-item',
-        '.project-item',
-        '.opportunity-item',
-        '[class*="bounty-item"]',
-        '[class*="project-item"]',
-        '[class*="opportunity-item"]'
-      ];
-
-      for (const selector of bountySelectors) {
-        const elements = $(selector);
-        if (elements.length > 0) {
-          console.log(`Found ${elements.length} elements with selector: ${selector}`);
-          
-          elements.each((index, element) => {
-            try {
-              const $element = $(element);
-              const title = $element.find('h1, h2, h3, h4, h5, h6, [class*="title"], [class*="name"]').first().text().trim();
-              const description = $element.find('[class*="description"], [class*="content"], p').first().text().trim();
-              const reward = $element.find('[class*="reward"], [class*="prize"], [class*="amount"], [class*="price"]').first().text().trim();
-              const link = $element.find('a').first().attr('href');
-
-              // Filter out navigation elements and ensure we have meaningful content
-              if (title && title.length > 3 && 
-                  !title.toLowerCase().includes('bounties') &&
-                  !title.toLowerCase().includes('projects') &&
-                  !title.toLowerCase().includes('grants') &&
-                  !title.toLowerCase().includes('search') &&
-                  !title.toLowerCase().includes('filter') &&
-                  !title.toLowerCase().includes('sort')) {
-                bounties.push({
-                  title: title,
-                  description: description || 'No description available',
-                  reward: reward || 'Reward TBD',
-                  link: link ? (link.startsWith('http') ? link : `https://earn.superteam.fun${link}`) : config.BOUNTIES_FEED_URL
-                });
-              }
-            } catch (error) {
-              console.error('Error parsing bounty element:', error.message);
-            }
-          });
-          
-          if (bounties.length > 0) {
-            break; // Stop after first successful selector
-          }
-        }
-      }
-
-      // If no bounties found with specific selectors, try a broader approach
-      if (bounties.length === 0) {
-        console.log('No bounties found with specific selectors, trying broader approach...');
-        
-        // Look for any elements that might contain bounty information
-        $('*').each((index, element) => {
+      // Simple approach - look for bounty elements
+      $('[class*="bounty"], [class*="card"], [class*="item"]').each((index, element) => {
+        try {
           const $element = $(element);
-          const text = $element.text().trim();
-          
-          // Look for elements that might be bounties based on content
-          if (text.length > 20 && text.length < 500 && 
-              (text.toLowerCase().includes('bounty') || 
-               text.toLowerCase().includes('reward') ||
-               text.toLowerCase().includes('prize') ||
-               text.toLowerCase().includes('earn') ||
-               text.toLowerCase().includes('opportunity') ||
-               text.toLowerCase().includes('project')) &&
-              // Exclude UI elements and navigation
-              !text.toLowerCase().includes('search') &&
-              !text.toLowerCase().includes('filter') &&
-              !text.toLowerCase().includes('sort') &&
-              !text.toLowerCase().includes('found 0 results') &&
-              !text.toLowerCase().includes('bountiesprojectsgrants') &&
-              !text.toLowerCase().includes('bounties') &&
-              !text.toLowerCase().includes('projects') &&
-              !text.toLowerCase().includes('grants')) {
-            
-            const title = $element.find('h1, h2, h3, h4, h5, h6').first().text().trim() || text.substring(0, 50) + '...';
-            const link = $element.find('a').first().attr('href');
-            
-            // Additional filtering for meaningful content
-            if (title && title.length > 3 && 
-                !title.toLowerCase().includes('bounties') &&
-                !title.toLowerCase().includes('projects') &&
-                !title.toLowerCase().includes('grants') &&
-                !title.toLowerCase().includes('search') &&
-                !title.toLowerCase().includes('filter')) {
-              bounties.push({
-                title: title,
-                description: text.length > 100 ? text.substring(0, 100) + '...' : text,
-                reward: 'Reward TBD',
-                link: link ? (link.startsWith('http') ? link : `https://earn.superteam.fun${link}`) : config.BOUNTIES_FEED_URL
-              });
-            }
+          const title = $element.find('h1, h2, h3, h4, h5, h6, [class*="title"], [class*="name"]').first().text().trim();
+          const description = $element.find('[class*="description"], [class*="content"], p').first().text().trim();
+          const reward = $element.find('[class*="reward"], [class*="prize"], [class*="amount"]').first().text().trim();
+          const link = $element.find('a').first().attr('href');
+
+          if (title && title.length > 3) {
+            bounties.push({
+              title: title,
+              description: description || 'No description available',
+              reward: reward || 'Reward TBD',
+              link: link ? (link.startsWith('http') ? link : `https://earn.superteam.fun${link}`) : config.BOUNTIES_FEED_URL
+            });
           }
-        });
-      }
+        } catch (error) {
+          console.error('Error parsing bounty element:', error.message);
+        }
+      });
 
       console.log(`Found ${bounties.length} bounties from simple scraping`);
       return bounties;
