@@ -153,11 +153,13 @@ class EventsSystem {
         
         // Common Chrome paths on Render
         const possiblePaths = [
+          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
           '/opt/render/.cache/puppeteer/chrome/linux-140.0.7339.82/chrome-linux64/chrome',
           '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
           '/usr/bin/google-chrome',
           '/usr/bin/chromium-browser',
-          '/usr/bin/chromium'
+          '/usr/bin/chromium',
+          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome'
         ];
         
         for (const chromePath of possiblePaths) {
