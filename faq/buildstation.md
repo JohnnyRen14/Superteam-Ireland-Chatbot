@@ -25,4 +25,3 @@ It was created to support builders participating in Colosseum Breakpoint Hackath
 
 ✅ Your laptop & willingness to build
 
-☘️ Dublin BuildStation is where Ireland’s builders level up and put Web3 on the map!

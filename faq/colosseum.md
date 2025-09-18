@@ -26,4 +26,3 @@ A: Colosseum is a global accelerator + hackathon platform for Solana builders. I
 ✅ Curiosity for Solana & blockchain
 ✅ Your laptop 
 
-🚀 Colosseum = Hackathons + Accelerator → A launchpad for Web3 startups.
