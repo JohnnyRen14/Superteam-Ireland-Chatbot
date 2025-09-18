@@ -13,16 +13,27 @@ class EventsSystem {
     try {
       console.log('Fetching events from Luma calendar...');
       
-      // Try to scrape real events from Luma calendar using Puppeteer
-      const events = await this.scrapeLumaEventsWithPuppeteer();
+      // First try simple HTTP request (works on Render free tier)
+      let events = await this.scrapeLumaEventsSimple();
       
       if (events.length > 0) {
         this.events = events;
         this.lastFetch = new Date();
-        console.log(`Fetched ${events.length} real events from Luma`);
+        console.log(`Fetched ${events.length} events from Luma (simple method)`);
+        return events;
+      }
+      
+      // If simple method fails, try Puppeteer
+      console.log('Simple method failed, trying Puppeteer...');
+      events = await this.scrapeLumaEventsWithPuppeteer();
+      
+      if (events.length > 0) {
+        this.events = events;
+        this.lastFetch = new Date();
+        console.log(`Fetched ${events.length} real events from Luma (Puppeteer)`);
         return events;
       } else {
-        // Fallback to sample events if scraping fails
+        // Fallback to sample events if both methods fail
         console.log('No events found, using fallback events');
         const fallbackEvents = this.getFallbackEvents();
         this.events = fallbackEvents;
@@ -134,6 +145,57 @@ class EventsSystem {
       
     } catch (error) {
       console.error('Error scraping Luma events:', error.message);
+      return [];
+    }
+  }
+
+  async scrapeLumaEventsSimple() {
+    try {
+      console.log('Scraping Luma calendar (simple method):', config.EVENTS_FEED_URL);
+      
+      const response = await axios.get(config.EVENTS_FEED_URL, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1'
+        },
+        timeout: 10000
+      });
+
+      const $ = cheerio.load(response.data);
+      const events = [];
+
+      // Look for event elements - this is a simplified approach
+      $('[data-testid="event-card"], .event-card, .event-item, [class*="event"]').each((index, element) => {
+        try {
+          const $element = $(element);
+          const title = $element.find('h1, h2, h3, h4, h5, h6, [class*="title"], [class*="name"]').first().text().trim();
+          const dateText = $element.find('[class*="date"], [class*="time"], time').first().text().trim();
+          const location = $element.find('[class*="location"], [class*="venue"], [class*="place"]').first().text().trim();
+          const link = $element.find('a').first().attr('href');
+
+          if (title && title.length > 3) {
+            events.push({
+              title: title,
+              dateText: dateText || 'Date TBD',
+              timeText: '',
+              location: location || 'Location TBD',
+              link: link ? (link.startsWith('http') ? link : `https://luma.com${link}`) : config.EVENTS_FEED_URL
+            });
+          }
+        } catch (error) {
+          console.error('Error parsing event element:', error.message);
+        }
+      });
+
+      console.log(`Found ${events.length} events from simple scraping`);
+      return events;
+
+    } catch (error) {
+      console.error('Error scraping Luma events (simple method):', error.message);
       return [];
     }
   }
