@@ -143,6 +143,45 @@ class EventsSystem {
     try {
       console.log('Scraping Luma calendar with Puppeteer:', config.EVENTS_FEED_URL);
       
+      // Try to find Chrome executable dynamically
+      let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+      
+      // If no specific path provided, try to find Chrome in common locations
+      if (!executablePath) {
+        const fs = require('fs');
+        const path = require('path');
+        
+        // Common Chrome paths on Render
+        const possiblePaths = [
+          '/opt/render/.cache/puppeteer/chrome/linux-140.0.7339.82/chrome-linux64/chrome',
+          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
+          '/usr/bin/google-chrome',
+          '/usr/bin/chromium-browser',
+          '/usr/bin/chromium'
+        ];
+        
+        for (const chromePath of possiblePaths) {
+          if (chromePath.includes('*')) {
+            // Handle wildcard paths
+            const dir = path.dirname(chromePath);
+            const pattern = path.basename(chromePath);
+            try {
+              const files = fs.readdirSync(dir);
+              const matchingFile = files.find(file => file.includes(pattern.replace('*', '')));
+              if (matchingFile) {
+                executablePath = path.join(dir, matchingFile);
+                break;
+              }
+            } catch (e) {
+              // Directory doesn't exist, continue
+            }
+          } else if (fs.existsSync(chromePath)) {
+            executablePath = chromePath;
+            break;
+          }
+        }
+      }
+
       browser = await puppeteer.launch({
         headless: true,
         args: [
@@ -156,7 +195,7 @@ class EventsSystem {
           '--disable-web-security',
           '--disable-features=VizDisplayCompositor'
         ],
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
+        executablePath: executablePath
       });
 
       const page = await browser.newPage();
