@@ -18,19 +18,19 @@ class EventsSystem {
       if (events.length > 0) {
         this.events = events;
         this.lastFetch = new Date();
-        console.log(`Fetched ${events.length} real events from Luma (Puppeteer)`);
+        console.log(`✅ Fetched ${events.length} real events from Luma (Puppeteer)`);
         return events;
       } else {
         // Fallback to sample events if Puppeteer fails
-        console.log('No events found, using fallback events');
+        console.log('⚠️ No events found from Puppeteer, using fallback message');
         const fallbackEvents = this.getFallbackEvents();
         this.events = fallbackEvents;
         this.lastFetch = new Date();
         return fallbackEvents;
       }
     } catch (error) {
-      console.error('Error fetching events:', error.message);
-      console.log('Using fallback events due to error');
+      console.error('❌ Error fetching events:', error.message);
+      console.log('⚠️ Using fallback events due to error');
       const fallbackEvents = this.getFallbackEvents();
       this.events = fallbackEvents;
       this.lastFetch = new Date();
@@ -811,10 +811,16 @@ class EventsSystem {
   }
 
   getFallbackEvents() {
-    // Return empty array instead of hardcoded events
-    // This forces the bot to show "No upcoming events found" message
-    // rather than misleading hardcoded events
-    return [];
+    // Return a message indicating that events couldn't be loaded
+    // This is better than showing "No upcoming events found"
+    return [{
+      title: 'Events temporarily unavailable',
+      date: new Date(),
+      location: 'Please check Luma calendar directly',
+      link: config.EVENTS_FEED_URL,
+      source: 'Fallback',
+      description: 'Unable to load events from Luma calendar. Please visit the Luma calendar directly for the most up-to-date information.'
+    }];
   }
 
   getUpcomingEvents(limit = 5) {
