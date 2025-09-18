@@ -57,27 +57,88 @@ class BountiesSystem {
       const $ = cheerio.load(response.data);
       const bounties = [];
 
-      // Look for bounty elements
-      $('[class*="bounty"], [class*="card"], [class*="item"]').each((index, element) => {
-        try {
-          const $element = $(element);
-          const title = $element.find('h1, h2, h3, h4, h5, h6, [class*="title"], [class*="name"]').first().text().trim();
-          const description = $element.find('[class*="description"], [class*="content"], p').first().text().trim();
-          const reward = $element.find('[class*="reward"], [class*="prize"], [class*="amount"]').first().text().trim();
-          const link = $element.find('a').first().attr('href');
+      // Look for bounty elements with more comprehensive selectors
+      const bountySelectors = [
+        '[class*="bounty"]',
+        '[class*="card"]',
+        '[class*="item"]',
+        '[class*="listing"]',
+        '[class*="post"]',
+        'article',
+        '.bounty-card',
+        '.project-card',
+        '.opportunity-card'
+      ];
 
-          if (title && title.length > 3) {
-            bounties.push({
-              title: title,
-              description: description || 'No description available',
-              reward: reward || 'Reward TBD',
-              link: link ? (link.startsWith('http') ? link : `https://earn.superteam.fun${link}`) : config.BOUNTIES_FEED_URL
-            });
+      for (const selector of bountySelectors) {
+        const elements = $(selector);
+        if (elements.length > 0) {
+          console.log(`Found ${elements.length} elements with selector: ${selector}`);
+          
+          elements.each((index, element) => {
+            try {
+              const $element = $(element);
+              const title = $element.find('h1, h2, h3, h4, h5, h6, [class*="title"], [class*="name"]').first().text().trim();
+              const description = $element.find('[class*="description"], [class*="content"], p').first().text().trim();
+              const reward = $element.find('[class*="reward"], [class*="prize"], [class*="amount"], [class*="price"]').first().text().trim();
+              const link = $element.find('a').first().attr('href');
+
+              if (title && title.length > 3) {
+                bounties.push({
+                  title: title,
+                  description: description || 'No description available',
+                  reward: reward || 'Reward TBD',
+                  link: link ? (link.startsWith('http') ? link : `https://earn.superteam.fun${link}`) : config.BOUNTIES_FEED_URL
+                });
+              }
+            } catch (error) {
+              console.error('Error parsing bounty element:', error.message);
+            }
+          });
+          
+          if (bounties.length > 0) {
+            break; // Stop after first successful selector
           }
-        } catch (error) {
-          console.error('Error parsing bounty element:', error.message);
         }
-      });
+      }
+
+      // If no bounties found with specific selectors, try a broader approach
+      if (bounties.length === 0) {
+        console.log('No bounties found with specific selectors, trying broader approach...');
+        
+        // Look for any elements that might contain bounty information
+        $('*').each((index, element) => {
+          const $element = $(element);
+          const text = $element.text().trim();
+          
+          // Look for elements that might be bounties based on content
+          if (text.length > 20 && text.length < 500 && 
+              (text.toLowerCase().includes('bounty') || 
+               text.toLowerCase().includes('reward') ||
+               text.toLowerCase().includes('prize') ||
+               text.toLowerCase().includes('earn') ||
+               text.toLowerCase().includes('opportunity') ||
+               text.toLowerCase().includes('project')) &&
+              // Exclude UI elements
+              !text.toLowerCase().includes('search') &&
+              !text.toLowerCase().includes('filter') &&
+              !text.toLowerCase().includes('sort') &&
+              !text.toLowerCase().includes('found 0 results')) {
+            
+            const title = $element.find('h1, h2, h3, h4, h5, h6').first().text().trim() || text.substring(0, 50) + '...';
+            const link = $element.find('a').first().attr('href');
+            
+            if (title && title.length > 3) {
+              bounties.push({
+                title: title,
+                description: text.length > 100 ? text.substring(0, 100) + '...' : text,
+                reward: 'Reward TBD',
+                link: link ? (link.startsWith('http') ? link : `https://earn.superteam.fun${link}`) : config.BOUNTIES_FEED_URL
+              });
+            }
+          }
+        });
+      }
 
       console.log(`Found ${bounties.length} bounties from simple scraping`);
       return bounties;
