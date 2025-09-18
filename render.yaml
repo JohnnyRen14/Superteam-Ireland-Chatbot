@@ -3,7 +3,7 @@ services:
     name: superteam-ireland-bot
     env: node
     plan: free
-    buildCommand: npm install && npx puppeteer browsers install chrome
+    buildCommand: npm install && npx puppeteer browsers install chrome@stable
     startCommand: node index.js
     envVars:
       - key: NODE_ENV
@@ -28,5 +28,5 @@ services:
         value: superteam_ireland_bot
       - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
         value: "false"
-      - key: PUPPETEER_EXECUTABLE_PATH
-        value: /opt/render/.cache/puppeteer/chrome/linux-140.0.7339.82/chrome-linux64/chrome
+      - key: PUPPETEER_CACHE_DIR
+        value: /opt/render/.cache/puppeteer

@@ -151,15 +151,14 @@ class EventsSystem {
         const fs = require('fs');
         const path = require('path');
         
-        // Common Chrome paths on Render
+        // Common Chrome paths on Render - prioritize stable installation
         const possiblePaths = [
           '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
-          '/opt/render/.cache/puppeteer/chrome/linux-140.0.7339.82/chrome-linux64/chrome',
           '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
+          '/opt/render/.cache/puppeteer/chrome/linux-140.0.7339.82/chrome-linux64/chrome',
           '/usr/bin/google-chrome',
           '/usr/bin/chromium-browser',
-          '/usr/bin/chromium',
-          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome'
+          '/usr/bin/chromium'
         ];
         
         for (const chromePath of possiblePaths) {
