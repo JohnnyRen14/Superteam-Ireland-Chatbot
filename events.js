@@ -1029,27 +1029,21 @@ class EventsSystem {
     let response = '🎉 **Upcoming Superteam Ireland Events**\n\n';
     
     events.forEach((event, index) => {
-      const dateStr = new Intl.DateTimeFormat('en-IE', {
+      // Show only the calendar date (no time), localized to Ireland
+      const dateOnlyStr = new Intl.DateTimeFormat('en-IE', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
         timeZone: 'Europe/Dublin'
       }).format(event.date);
 
       response += `${index + 1}. **${event.title}**\n`;
-      
-      // Show date and time together, prioritizing time ranges
-      if (event.rawDateText && event.rawDateText.includes(' - ')) {
-        // Show full time range
-        response += `📅 **Date**: ${dateStr.split(' at ')[0]}\n`;
-        response += `⏰ **Time**: ${event.rawDateText}\n`;
-      } else {
-        // Show date with time included
-        response += `📅 **Date**: ${dateStr}\n`;
+      response += `📅 **Date**: ${dateOnlyStr}\n`;
+
+      // Show the scraped time text exactly as captured, and mark Irish time
+      if (event.rawDateText && event.rawDateText.trim().length > 0) {
+        response += `⏰ **Time**: ${event.rawDateText} (Irish time)\n`;
       }
       
       response += `📍 **Location**: ${event.location}\n`;
