@@ -13,40 +13,15 @@ class EventsSystem {
     try {
       console.log('Fetching events from Luma calendar...');
       
-      // Try simple HTTP scraping first (works better on Render free tier)
-      let events = await this.scrapeLumaEvents();
+      const events = await this.scrapeLumaEventsWithPuppeteer();
       
-      if (events.length > 0) {
-        this.events = events;
-        this.lastFetch = new Date();
-        console.log(`Fetched ${events.length} real events from Luma (HTTP)`);
-        return events;
-      }
-      
-      // If HTTP scraping fails, try Puppeteer
-      console.log('HTTP scraping failed, trying Puppeteer...');
-      events = await this.scrapeLumaEventsWithPuppeteer();
-      
-      if (events.length > 0) {
-        this.events = events;
-        this.lastFetch = new Date();
-        console.log(`Fetched ${events.length} real events from Luma (Puppeteer)`);
-        return events;
-      } else {
-        // Fallback to sample events if both methods fail
-        console.log('No events found, using fallback events');
-        const fallbackEvents = this.getFallbackEvents();
-        this.events = fallbackEvents;
-        this.lastFetch = new Date();
-        return fallbackEvents;
-      }
+      this.events = events;
+      this.lastFetch = new Date();
+      console.log(`Fetched ${events.length} real events from Luma (Puppeteer)`);
+      return events;
     } catch (error) {
       console.error('Error fetching events:', error.message);
-      console.log('Using fallback events due to error');
-      const fallbackEvents = this.getFallbackEvents();
-      this.events = fallbackEvents;
-      this.lastFetch = new Date();
-      return fallbackEvents;
+      throw error; // Re-throw the error instead of using fallback
     }
   }
 
@@ -164,59 +139,62 @@ class EventsSystem {
         const fs = require('fs');
         const path = require('path');
         
-        // Common Chrome paths on Render - try multiple approaches
-        const possiblePaths = [
-          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
-          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
-          '/opt/render/.cache/puppeteer/chrome/linux-140.0.7339.82/chrome-linux64/chrome',
-          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
-          '/usr/bin/google-chrome',
-          '/usr/bin/chromium-browser',
-          '/usr/bin/chromium',
-          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome'
-        ];
-        
-        for (const chromePath of possiblePaths) {
-          if (chromePath.includes('*')) {
-            // Handle wildcard paths
-            const dir = path.dirname(chromePath);
-            const pattern = path.basename(chromePath);
-            try {
-              const files = fs.readdirSync(dir);
-              const matchingFile = files.find(file => file.includes(pattern.replace('*', '')));
-              if (matchingFile) {
-                executablePath = path.join(dir, matchingFile);
-                break;
-              }
-            } catch (e) {
-              // Directory doesn't exist, continue
-            }
-          } else if (fs.existsSync(chromePath)) {
-            executablePath = chromePath;
-            break;
-          }
-        }
-        
-        // If still no Chrome found, try to find any Chrome installation in the cache directory
-        if (!executablePath) {
-          try {
-            const cacheDir = '/opt/render/.cache/puppeteer';
-            if (fs.existsSync(cacheDir)) {
-              const chromeDir = fs.readdirSync(cacheDir).find(dir => dir.startsWith('chrome'));
-              if (chromeDir) {
-                const chromePath = path.join(cacheDir, chromeDir, 'chrome-linux64', 'chrome');
-                if (fs.existsSync(chromePath)) {
-                  executablePath = chromePath;
+        // First, try to find Chrome in the Puppeteer cache directory
+        try {
+          const cacheDir = '/opt/render/.cache/puppeteer';
+          if (fs.existsSync(cacheDir)) {
+            console.log('Checking Puppeteer cache directory:', cacheDir);
+            const items = fs.readdirSync(cacheDir);
+            console.log('Items in cache directory:', items);
+            
+            // Look for any chrome directory
+            const chromeDir = items.find(item => item.startsWith('chrome'));
+            if (chromeDir) {
+              console.log('Found Chrome directory:', chromeDir);
+              const chromePath = path.join(cacheDir, chromeDir, 'chrome-linux64', 'chrome');
+              console.log('Checking Chrome path:', chromePath);
+              if (fs.existsSync(chromePath)) {
+                executablePath = chromePath;
+                console.log('Chrome found at:', executablePath);
+              } else {
+                // Try alternative structure
+                const altPath = path.join(cacheDir, chromeDir, 'chrome');
+                if (fs.existsSync(altPath)) {
+                  executablePath = altPath;
+                  console.log('Chrome found at (alt):', executablePath);
                 }
               }
             }
-          } catch (e) {
-            // Continue if this fails
+          }
+        } catch (e) {
+          console.log('Error checking cache directory:', e.message);
+        }
+        
+        // If still no Chrome found, try system Chrome
+        if (!executablePath) {
+          const systemPaths = [
+            '/usr/bin/google-chrome',
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chromium',
+            '/usr/bin/google-chrome-stable'
+          ];
+          
+          for (const chromePath of systemPaths) {
+            if (fs.existsSync(chromePath)) {
+              executablePath = chromePath;
+              console.log('Chrome found at system path:', executablePath);
+              break;
+            }
           }
         }
       }
       
-      console.log('Chrome executable path:', executablePath);
+      console.log('Final Chrome executable path:', executablePath);
+      
+      // If still no Chrome found, throw an error instead of using fallback
+      if (!executablePath) {
+        throw new Error('Chrome executable not found. Please ensure Chrome is installed via: npx puppeteer browsers install chrome');
+      }
 
       browser = await puppeteer.launch({
         headless: true,

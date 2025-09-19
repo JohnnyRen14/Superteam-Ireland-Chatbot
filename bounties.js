@@ -13,19 +13,7 @@ class BountiesSystem {
     try {
       console.log('Fetching bounties from Superteam Earn...');
       
-      // Try simple HTTP scraping first (works better on Render free tier)
-      let bounties = await this.fetchBountiesWithAxios();
-      
-      if (bounties.length > 0) {
-        this.bounties = bounties;
-        this.lastFetch = new Date();
-        console.log(`Fetched ${bounties.length} bounties (HTTP)`);
-        return bounties;
-      }
-      
-      // If HTTP scraping fails, try Puppeteer
-      console.log('HTTP scraping failed, trying Puppeteer...');
-      bounties = await this.fetchBountiesWithPuppeteer();
+      const bounties = await this.fetchBountiesWithPuppeteer();
       
       this.bounties = bounties;
       this.lastFetch = new Date();
@@ -34,7 +22,7 @@ class BountiesSystem {
       return bounties;
     } catch (error) {
       console.error('Error fetching bounties:', error.message);
-      return this.getFallbackBounties();
+      throw error; // Re-throw the error instead of using fallback
     }
   }
 
@@ -42,65 +30,71 @@ class BountiesSystem {
   async fetchBountiesWithPuppeteer() {
     let browser;
     try {
-      // Try to find Chrome executable dynamically
-      let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-      
-      // If no specific path provided, try to find Chrome in common locations
-      if (!executablePath) {
-        const fs = require('fs');
-        const path = require('path');
-        
-        // Common Chrome paths on Render - try multiple approaches
-        const possiblePaths = [
-          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
-          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
-          '/opt/render/.cache/puppeteer/chrome/linux-140.0.7339.82/chrome-linux64/chrome',
-          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome',
-          '/usr/bin/google-chrome',
-          '/usr/bin/chromium-browser',
-          '/usr/bin/chromium',
-          '/opt/render/.cache/puppeteer/chrome/linux-*/chrome-linux64/chrome'
-        ];
-        
-        for (const chromePath of possiblePaths) {
-          if (chromePath.includes('*')) {
-            // Handle wildcard paths
-            const dir = path.dirname(chromePath);
-            const pattern = path.basename(chromePath);
-            try {
-              const files = fs.readdirSync(dir);
-              const matchingFile = files.find(file => file.includes(pattern.replace('*', '')));
-              if (matchingFile) {
-                executablePath = path.join(dir, matchingFile);
-                break;
-              }
-            } catch (e) {
-              // Directory doesn't exist, continue
-            }
-          } else if (fs.existsSync(chromePath)) {
-            executablePath = chromePath;
-            break;
-          }
-        }
-        
-        // If still no Chrome found, try to find any Chrome installation in the cache directory
-        if (!executablePath) {
-          try {
-            const cacheDir = '/opt/render/.cache/puppeteer';
-            if (fs.existsSync(cacheDir)) {
-              const chromeDir = fs.readdirSync(cacheDir).find(dir => dir.startsWith('chrome'));
-              if (chromeDir) {
-                const chromePath = path.join(cacheDir, chromeDir, 'chrome-linux64', 'chrome');
-                if (fs.existsSync(chromePath)) {
-                  executablePath = chromePath;
-                }
-              }
-            }
-          } catch (e) {
-            // Continue if this fails
-          }
-        }
-      }
+       // Try to find Chrome executable dynamically
+       let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+       console.log('Looking for Chrome executable...');
+       
+       // If no specific path provided, try to find Chrome in common locations
+       if (!executablePath) {
+         const fs = require('fs');
+         const path = require('path');
+         
+         // First, try to find Chrome in the Puppeteer cache directory
+         try {
+           const cacheDir = '/opt/render/.cache/puppeteer';
+           if (fs.existsSync(cacheDir)) {
+             console.log('Checking Puppeteer cache directory:', cacheDir);
+             const items = fs.readdirSync(cacheDir);
+             console.log('Items in cache directory:', items);
+             
+             // Look for any chrome directory
+             const chromeDir = items.find(item => item.startsWith('chrome'));
+             if (chromeDir) {
+               console.log('Found Chrome directory:', chromeDir);
+               const chromePath = path.join(cacheDir, chromeDir, 'chrome-linux64', 'chrome');
+               console.log('Checking Chrome path:', chromePath);
+               if (fs.existsSync(chromePath)) {
+                 executablePath = chromePath;
+                 console.log('Chrome found at:', executablePath);
+               } else {
+                 // Try alternative structure
+                 const altPath = path.join(cacheDir, chromeDir, 'chrome');
+                 if (fs.existsSync(altPath)) {
+                   executablePath = altPath;
+                   console.log('Chrome found at (alt):', executablePath);
+                 }
+               }
+             }
+           }
+         } catch (e) {
+           console.log('Error checking cache directory:', e.message);
+         }
+         
+         // If still no Chrome found, try system Chrome
+         if (!executablePath) {
+           const systemPaths = [
+             '/usr/bin/google-chrome',
+             '/usr/bin/chromium-browser',
+             '/usr/bin/chromium',
+             '/usr/bin/google-chrome-stable'
+           ];
+           
+           for (const chromePath of systemPaths) {
+             if (fs.existsSync(chromePath)) {
+               executablePath = chromePath;
+               console.log('Chrome found at system path:', executablePath);
+               break;
+             }
+           }
+         }
+       }
+       
+       console.log('Final Chrome executable path:', executablePath);
+       
+       // If still no Chrome found, throw an error instead of using fallback
+       if (!executablePath) {
+         throw new Error('Chrome executable not found. Please ensure Chrome is installed via: npx puppeteer browsers install chrome');
+       }
 
       browser = await puppeteer.launch({
         headless: true,
@@ -369,95 +363,28 @@ class BountiesSystem {
 
   async fetchBountiesWithAxios() {
     try {
-      console.log('Fetching bounties with HTTP method:', config.BOUNTIES_FEED_URL);
-      
       const response = await axios.get(config.BOUNTIES_FEED_URL, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1'
-        },
-        timeout: 15000
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
       });
 
       const $ = cheerio.load(response.data);
       const bounties = [];
 
-      // Look for bounty elements with multiple selectors
-      const selectors = [
-        '[class*="bounty"]',
-        '[class*="card"]',
-        '.item',
-        'article',
-        'section',
-        'div[class*="flex"]',
-        'div[class*="grid"]',
-        '[data-testid*="bounty"]',
-        '[data-testid*="card"]'
-      ];
-
-      for (const selector of selectors) {
-        const elements = $(selector);
-        if (elements.length > 0) {
-          console.log(`Found ${elements.length} elements with selector: ${selector}`);
-          
-          elements.each((i, element) => {
-            try {
-              const bounty = this.parseBountyElement($(element), $);
-              if (bounty && bounty.title && bounty.title.length > 5) {
-                bounties.push(bounty);
-              }
-            } catch (error) {
-              console.log('Error parsing bounty element:', error.message);
-            }
-          });
-          
-          if (bounties.length > 0) {
-            break; // Stop after first successful selector
+      // Parse bounty cards
+      $('[class*="bounty"], [class*="card"], .item').each((i, element) => {
+        try {
+          const bounty = this.parseBountyElement($(element), $);
+          if (bounty) {
+            bounties.push(bounty);
           }
+        } catch (error) {
+          console.log('Error parsing bounty element:', error.message);
         }
-      }
+      });
 
-      // If no specific selectors work, try a broader approach
-      if (bounties.length === 0) {
-        console.log('No bounties found with specific selectors, trying broader approach...');
-        
-        // Look for any elements that might contain bounty information
-        $('*').each((index, element) => {
-          const $element = $(element);
-          const text = $element.text().trim();
-          
-          // Look for elements that might be bounties based on content
-          if (text.length > 20 && text.length < 500 && 
-              (text.toLowerCase().includes('superteam ireland') || 
-               text.toLowerCase().includes('bounty') ||
-               text.toLowerCase().includes('usdc') ||
-               text.toLowerCase().includes('prize') ||
-               text.toLowerCase().includes('reward')) &&
-              // Exclude UI elements
-              !text.toLowerCase().includes('search') &&
-              !text.toLowerCase().includes('filter') &&
-              !text.toLowerCase().includes('sort') &&
-              !text.toLowerCase().includes('results') &&
-              !text.toLowerCase().includes('found 0')) {
-            
-            const bounty = this.parseBountyElement($element, $);
-            if (bounty && bounty.title && bounty.title.length > 5) {
-              bounties.push(bounty);
-            }
-          }
-        });
-      }
-
-      // Remove duplicates
-      const uniqueBounties = this.removeDuplicateBounties(bounties);
-      console.log(`Found ${uniqueBounties.length} unique bounties from HTTP scraping`);
-      
-      return uniqueBounties;
-      
+      return bounties;
     } catch (error) {
       console.error('Error fetching bounties with axios:', error.message);
       return [];
@@ -555,18 +482,6 @@ class BountiesSystem {
     }
 
     return response;
-  }
-
-  removeDuplicateBounties(bounties) {
-    const seen = new Set();
-    return bounties.filter(bounty => {
-      const key = `${bounty.title}_${bounty.prize}`;
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
   }
 
   getBountiesStatus() {
