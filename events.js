@@ -199,12 +199,7 @@ class EventsSystem {
         }
       }
 
-      console.log('Final Chrome executable path:', executablePath);
-      
-      // If still no Chrome found, throw an error instead of using fallback
-      if (!executablePath) {
-        throw new Error('Chrome executable not found. Please ensure Chromium is installed via: npx puppeteer browsers install chromium');
-      }
+      console.log('Final Chrome executable path:', executablePath || '[auto-resolve]');
 
       browser = await puppeteer.launch({
         headless: true,
