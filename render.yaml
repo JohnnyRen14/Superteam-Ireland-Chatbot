@@ -1,10 +1,9 @@
 services:
   - type: web
     name: superteam-ireland-bot
-    env: node
+    env: docker
     plan: free
-    buildCommand: npm install && npx puppeteer install chrome@stable && ls -la /opt/render/.cache/puppeteer/ || true
-    startCommand: npx puppeteer install chrome@stable && node index.js
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: NODE_ENV
         value: production
@@ -26,7 +25,3 @@ services:
         value: "0 */12 * * *"
       - key: BOT_USERNAME
         value: superteam_ireland_bot
-      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
-        value: "false"
-      - key: PUPPETEER_CACHE_DIR
-        value: /opt/render/.cache/puppeteer
