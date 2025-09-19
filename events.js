@@ -492,6 +492,9 @@ class EventsSystem {
       });
 
       console.log(`Found ${events.length} events from Puppeteer scraping`);
+      
+      // Debug: Log the raw scraped data
+      console.log('Raw scraped events data:', JSON.stringify(events.slice(0, 2), null, 2));
 
       // Process the scraped events
       const processedEvents = events.map(eventData => {
@@ -543,6 +546,15 @@ class EventsSystem {
       // Remove duplicates
       const uniqueEvents = this.removeDuplicateEvents(processedEvents);
       console.log(`Processed ${uniqueEvents.length} unique events`);
+      
+      // Debug: Log the processed events
+      console.log('Processed events:', uniqueEvents.map(e => ({
+        title: e.title,
+        date: e.date.toISOString(),
+        rawDateText: e.rawDateText,
+        location: e.location,
+        link: e.link
+      })));
 
       return uniqueEvents;
 
@@ -738,9 +750,12 @@ class EventsSystem {
         return tomorrow;
       }
 
-      if (lowerText.includes('next friday') || lowerText.includes('friday')) {
-        // Don't hardcode Friday dates, let the actual date parsing handle it
-        return new Date();
+      if (lowerText.includes('next friday')) {
+        // Calculate next Friday
+        const nextFriday = new Date(now);
+        const daysUntilFriday = (5 - now.getDay() + 7) % 7;
+        nextFriday.setDate(now.getDate() + (daysUntilFriday === 0 ? 7 : daysUntilFriday));
+        return nextFriday;
       }
 
       // Try to parse specific date patterns from Luma
