@@ -89,11 +89,21 @@ class BountiesSystem {
          }
        }
        
+       // Fallback: use Puppeteer's own executable path if available
+       if (!executablePath && typeof puppeteer.executablePath === 'function') {
+         try {
+           executablePath = puppeteer.executablePath();
+           console.log('Using Puppeteer bundled Chromium at:', executablePath);
+         } catch (e) {
+           console.log('Failed to get Puppeteer executablePath():', e.message);
+         }
+       }
+
        console.log('Final Chrome executable path:', executablePath);
        
        // If still no Chrome found, throw an error instead of using fallback
        if (!executablePath) {
-         throw new Error('Chrome executable not found. Please ensure Chrome is installed via: npx puppeteer browsers install chrome');
+         throw new Error('Chrome executable not found. Please ensure Chromium is installed via: npx puppeteer browsers install chromium');
        }
 
       browser = await puppeteer.launch({
