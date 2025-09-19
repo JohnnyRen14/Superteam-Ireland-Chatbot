@@ -463,38 +463,46 @@ class EventsSystem {
             }
           }
 
-          // If no specific date or time found, look for patterns in the full text
-          if (!dateText || dateText.length < 5) {
-            const fullText = element.textContent?.trim() || '';
-            // Look for various date patterns
-            const datePatterns = [
-              /(\d{1,2}\/\d{1,2}\/\d{4})/,
-              /(\d{4}-\d{2}-\d{2})/,
-              /([A-Za-z]+ \d{1,2},? \d{4})/,
-              /([A-Za-z]+ \d{1,2})/,
-              /(Tomorrow|Today|Next [A-Za-z]+)/,
-              /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}/i
-            ];
-            
-            for (const pattern of datePatterns) {
-              const match = fullText.match(pattern);
-              if (match) {
-                dateText = match[1];
-                break;
-              }
-            }
-
-            // Look for time patterns including ranges and am/pm variants
-            if (!timeText) {
-              const timeRangeMatch = fullText.match(/(\d{1,2}:?\d{0,2}\s*(?:am|pm|AM|PM))\s*[\-–—]\s*(\d{1,2}:?\d{0,2}\s*(?:am|pm|AM|PM))/);
-              const singleTimeMatch = fullText.match(/(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)|\d{1,2}\s*(?:am|pm|AM|PM))/);
-              if (timeRangeMatch) {
-                timeText = timeRangeMatch[1]; // start time of range
-              } else if (singleTimeMatch) {
-                timeText = singleTimeMatch[1];
-              }
+        // If no specific date or time found, look for patterns in the full text
+        if (!dateText || dateText.length < 5) {
+          const fullText = element.textContent?.trim() || '';
+          // Look for various date patterns
+          const datePatterns = [
+            /(\d{1,2}\/\d{1,2}\/\d{4})/,
+            /(\d{4}-\d{2}-\d{2})/,
+            /([A-Za-z]+ \d{1,2},? \d{4})/,
+            /([A-Za-z]+ \d{1,2})/,
+            /(Tomorrow|Today|Next [A-Za-z]+)/,
+            /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}/i
+          ];
+          
+          for (const pattern of datePatterns) {
+            const match = fullText.match(pattern);
+            if (match) {
+              dateText = match[1];
+              break;
             }
           }
+
+          // Look for time patterns including ranges and am/pm variants
+          if (!timeText) {
+            const timeRangeMatch = fullText.match(/(\d{1,2}:?\d{0,2}\s*(?:am|pm|AM|PM))\s*[\-–—]\s*(\d{1,2}:?\d{0,2}\s*(?:am|pm|AM|PM))/);
+            const singleTimeMatch = fullText.match(/(\d{1,2}:\d{2}\s*(?:am|pm|AM|PM)|\d{1,2}\s*(?:am|pm|AM|PM))/);
+            if (timeRangeMatch) {
+              timeText = timeRangeMatch[1]; // start time of range
+            } else if (singleTimeMatch) {
+              timeText = singleTimeMatch[1];
+            }
+          }
+        }
+
+        // Skip elements that are just time fragments or UI elements
+        if (!title || title.length < 5 || 
+            title.match(/^\d{1,2}:\d{2}\s*(am|pm|AM|PM)$/) ||
+            title.match(/^LIVE\d{1,2}:\d{2}\s*(am|pm|AM|PM)$/) ||
+            title === timeText) {
+          return null;
+        }
 
           // Extract location
           let location = '';
@@ -597,21 +605,30 @@ class EventsSystem {
 
         // Use the actual parsed date from Luma, don't override it
         
-        // For other events, if we only got a time and it's in the past today, 
-        // assume it's for tomorrow or next occurrence
-        if (event.rawDateText && event.rawDateText.match(/^\d{1,2}:\d{2}$/)) {
+        // For Luma events, if we only got a time (like "9:30 AM"), 
+        // assume it's for the next occurrence of that time
+        if (event.rawDateText && event.rawDateText.match(/^\d{1,2}:\d{2}\s*(am|pm|AM|PM)?$/)) {
           const now = new Date();
-          if (event.date < now) {
-            // If the event time has passed today, move it to tomorrow
-            const tomorrow = new Date(now);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const timeMatch = event.rawDateText.match(/(\d{1,2}):(\d{2})/);
-            if (timeMatch) {
-              const hours = parseInt(timeMatch[1]);
-              const minutes = parseInt(timeMatch[2]);
-              tomorrow.setHours(hours, minutes, 0, 0);
-              event.date = tomorrow;
+          const timeMatch = event.rawDateText.match(/(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)?/);
+          if (timeMatch) {
+            let hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const period = timeMatch[3] ? timeMatch[3].toLowerCase() : '';
+            
+            // Convert to 24-hour format if AM/PM specified
+            if (period === 'pm' && hours !== 12) hours += 12;
+            if (period === 'am' && hours === 12) hours = 0;
+            
+            // Create event for next occurrence of this time
+            const eventDate = new Date(now);
+            eventDate.setHours(hours, minutes, 0, 0);
+            
+            // If the time has already passed today, move to tomorrow
+            if (eventDate <= now) {
+              eventDate.setDate(eventDate.getDate() + 1);
             }
+            
+            event.date = eventDate;
           }
         }
 
@@ -936,6 +953,13 @@ class EventsSystem {
   removeDuplicateEvents(events) {
     const seen = new Set();
     return events.filter(event => {
+      // Skip events that are just time fragments or UI elements
+      if (event.title.match(/^\d{1,2}:\d{2}\s*(am|pm|AM|PM)$/) ||
+          event.title.match(/^LIVE\d{1,2}:\d{2}\s*(am|pm|AM|PM)$/) ||
+          event.title.length < 5) {
+        return false;
+      }
+      
       const key = `${event.title}_${event.date.getTime()}`;
       if (seen.has(key)) {
         return false;
