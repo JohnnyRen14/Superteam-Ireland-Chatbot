@@ -464,7 +464,7 @@ class EventsSystem {
             }
           }
           
-          // Extract time if present
+          // Extract time if present - look for full time ranges
           let timeText = '';
           const timeSelectors = ['.time', '.event-time', '[class*="time"]', '[class*="datetime"]'];
           for (const selector of timeSelectors) {
@@ -472,6 +472,16 @@ class EventsSystem {
             if (timeEl && timeEl.textContent?.trim()) {
               timeText = timeEl.textContent.trim();
               break;
+            }
+          }
+          
+          // If no specific time found, look for time ranges in the full text
+          if (!timeText) {
+            const fullText = element.textContent?.trim() || '';
+            // Look for time ranges like "9:30 AM - 11:00 AM" or "14:00 - 16:00"
+            const timeRangeMatch = fullText.match(/(\d{1,2}:?\d{0,2}\s*(?:am|pm|AM|PM)?)\s*[\-–—]\s*(\d{1,2}:?\d{0,2}\s*(?:am|pm|AM|PM)?)/);
+            if (timeRangeMatch) {
+              timeText = `${timeRangeMatch[1]} - ${timeRangeMatch[2]}`;
             }
           }
 
@@ -620,10 +630,11 @@ class EventsSystem {
 
         // Use the actual parsed date from Luma, don't override it
         
-        // For Luma events, if we only got a time (like "9:30 AM"), 
+        // For Luma events, if we only got a time (like "9:30 AM" or "9:30 AM - 11:00 AM"), 
         // assume it's for the next occurrence of that time
-        if (event.rawDateText && event.rawDateText.match(/^\d{1,2}:\d{2}\s*(am|pm|AM|PM)?$/)) {
+        if (event.rawDateText && event.rawDateText.match(/^\d{1,2}:\d{2}\s*(am|pm|AM|PM)?(\s*[\-–—]\s*\d{1,2}:\d{2}\s*(am|pm|AM|PM)?)?$/)) {
           const now = new Date();
+          // Extract start time from the time text (could be a range)
           const timeMatch = event.rawDateText.match(/(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)?/);
           if (timeMatch) {
             let hours = parseInt(timeMatch[1]);
@@ -1031,6 +1042,14 @@ class EventsSystem {
 
       response += `${index + 1}. **${event.title}**\n`;
       response += `📅 **Date**: ${dateStr}\n`;
+      
+      // Show time range if available, otherwise just the formatted date
+      if (event.rawDateText && event.rawDateText.includes(' - ')) {
+        response += `⏰ **Time**: ${event.rawDateText}\n`;
+      } else if (event.rawDateText && event.rawDateText.match(/\d{1,2}:\d{2}/)) {
+        response += `⏰ **Time**: ${event.rawDateText}\n`;
+      }
+      
       response += `📍 **Location**: ${event.location}\n`;
       response += `🔗 **RSVP**: [Click here](${event.link})\n`;
       
