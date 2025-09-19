@@ -4,7 +4,7 @@ services:
     env: node
     plan: free
     buildCommand: npm install && npx puppeteer install && ls -la /opt/render/.cache/puppeteer/ || true
-    startCommand: node index.js
+    startCommand: npx puppeteer install && node index.js
     envVars:
       - key: NODE_ENV
         value: production
