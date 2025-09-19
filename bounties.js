@@ -39,7 +39,7 @@ class BountiesSystem {
          const fs = require('fs');
          const path = require('path');
          
-         // First, try to find Chrome in the Puppeteer cache directory
+         // First, try to find Chrome/Chromium in the Puppeteer cache directory
          try {
            const cacheDir = '/opt/render/.cache/puppeteer';
            if (fs.existsSync(cacheDir)) {
@@ -47,8 +47,8 @@ class BountiesSystem {
              const items = fs.readdirSync(cacheDir);
              console.log('Items in cache directory:', items);
              
-             // Look for any chrome directory
-             const chromeDir = items.find(item => item.startsWith('chrome'));
+             // Look for any chrome/chromium directory
+             const chromeDir = items.find(item => item.startsWith('chrome') || item.startsWith('chromium'));
              if (chromeDir) {
                console.log('Found Chrome directory:', chromeDir);
                const chromePath = path.join(cacheDir, chromeDir, 'chrome-linux64', 'chrome');
@@ -97,6 +97,19 @@ class BountiesSystem {
          } catch (e) {
            console.log('Failed to get Puppeteer executablePath():', e.message);
          }
+       }
+
+       // If we found a path but it doesn't actually exist at runtime, let Puppeteer resolve
+       try {
+         if (executablePath) {
+           const fs = require('fs');
+           if (!fs.existsSync(executablePath)) {
+             console.log('Configured executablePath does not exist. Falling back to Puppeteer auto-resolve.');
+             executablePath = undefined;
+           }
+         }
+       } catch (e) {
+         console.log('Error validating executablePath:', e.message);
        }
 
        console.log('Final Chrome executable path:', executablePath || '[auto-resolve]');
