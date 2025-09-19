@@ -268,8 +268,74 @@ class EventsSystem {
       // Wait a bit more for any lazy loading
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Extract events using multiple approaches
-      const events = await page.evaluate(() => {
+      // First, try extracting events from Next.js __NEXT_DATA__ (most reliable)
+      const nextDataEvents = await page.evaluate(() => {
+        try {
+          const el = document.getElementById('__NEXT_DATA__');
+          if (!el || !el.textContent) return [];
+          const data = JSON.parse(el.textContent);
+
+          const results = [];
+          const visit = (obj) => {
+            if (!obj || typeof obj !== 'object') return;
+
+            // Heuristic: objects that look like events
+            const hasStart = 'startsAt' in obj || 'startAt' in obj || 'startDate' in obj;
+            const hasTitle = 'title' in obj || 'name' in obj;
+            const maybeUrl = obj.url || obj.slug || obj.path;
+            if (hasStart && hasTitle) {
+              const startsAt = obj.startsAt || obj.startAt || obj.startDate || '';
+              const title = obj.title || obj.name || '';
+              const location = (obj.location && (obj.location.name || obj.location.title)) || (obj.venue && (obj.venue.name || obj.venue.title)) || '';
+              let link = '';
+              if (typeof maybeUrl === 'string') link = maybeUrl;
+              if (!link && typeof obj.slug === 'string') link = `/event/${obj.slug}`;
+              if (!link && obj.id && typeof obj.id === 'string') link = `/event/${obj.id}`;
+
+              if (title && startsAt) {
+                results.push({
+                  title,
+                  dateText: startsAt,
+                  timeText: '',
+                  location,
+                  link
+                });
+              }
+            }
+
+            // Recurse
+            for (const key in obj) {
+              // Avoid huge strings
+              if (typeof obj[key] === 'object' && obj[key] !== null) visit(obj[key]);
+              if (Array.isArray(obj[key])) obj[key].forEach(visit);
+            }
+          };
+
+          visit(data);
+
+          // Normalize links
+          return results.map(e => {
+            let link = e.link || '';
+            if (link && !link.startsWith('http')) {
+              // Common Luma patterns
+              if (!link.startsWith('/')) link = `/${link}`;
+              link = `https://luma.com${link}`;
+            }
+            return { ...e, link };
+          });
+        } catch (e) {
+          return [];
+        }
+      });
+
+      // If we got structured events, use them
+      let events;
+      if (Array.isArray(nextDataEvents) && nextDataEvents.length > 0) {
+        console.log(`Found ${nextDataEvents.length} events via __NEXT_DATA__`);
+        events = nextDataEvents;
+      } else {
+        // Extract events using multiple approaches from the DOM as a fallback
+        events = await page.evaluate(() => {
         const eventElements = [];
         
         // Try multiple selectors to find events
@@ -490,6 +556,7 @@ class EventsSystem {
           };
         }).filter(event => event.title && event.title.length > 3);
       });
+      }
 
       console.log(`Found ${events.length} events from Puppeteer scraping`);
       
@@ -510,9 +577,17 @@ class EventsSystem {
           eventLink = `${config.EVENTS_FEED_URL}?q=${encodeURIComponent(titleSlug)}`;
         }
         
+        // Prefer ISO start date directly when provided by __NEXT_DATA__
+        let parsedDate = this.parseLumaDate(eventData.dateText, eventData.timeText);
+        // If `dateText` looks like ISO (2025-09-21T18:00:00Z), parse with Date directly
+        if (eventData.dateText && /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(eventData.dateText)) {
+          const iso = new Date(eventData.dateText);
+          if (!isNaN(iso.getTime())) parsedDate = iso;
+        }
+
         const event = {
           title: eventData.title,
-          date: this.parseLumaDate(eventData.dateText, eventData.timeText),
+          date: parsedDate,
           location: eventData.location || 'Dublin, Ireland',
           link: eventLink,
           source: 'Luma Calendar',
