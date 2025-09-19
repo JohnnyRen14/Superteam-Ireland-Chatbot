@@ -214,7 +214,7 @@ class EventsSystem {
 
       console.log('Final Chrome executable path:', executablePath || '[auto-resolve]');
 
-      browser = await puppeteer.launch({
+      const launchOptions = {
         headless: true,
         args: [
           '--no-sandbox',
@@ -226,9 +226,12 @@ class EventsSystem {
           '--disable-gpu',
           '--disable-web-security',
           '--disable-features=VizDisplayCompositor'
-        ],
-        executablePath: executablePath
-      });
+        ]
+      };
+      if (executablePath) {
+        launchOptions.executablePath = executablePath;
+      }
+      browser = await puppeteer.launch(launchOptions);
 
       const page = await browser.newPage();
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
