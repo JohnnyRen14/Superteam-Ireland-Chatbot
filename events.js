@@ -1041,13 +1041,15 @@ class EventsSystem {
       }).format(event.date);
 
       response += `${index + 1}. **${event.title}**\n`;
-      response += `📅 **Date**: ${dateStr}\n`;
       
-      // Show time range if available, otherwise just the formatted date
+      // Show date and time together, prioritizing time ranges
       if (event.rawDateText && event.rawDateText.includes(' - ')) {
+        // Show full time range
+        response += `📅 **Date**: ${dateStr.split(' at ')[0]}\n`;
         response += `⏰ **Time**: ${event.rawDateText}\n`;
-      } else if (event.rawDateText && event.rawDateText.match(/\d{1,2}:\d{2}/)) {
-        response += `⏰ **Time**: ${event.rawDateText}\n`;
+      } else {
+        // Show date with time included
+        response += `📅 **Date**: ${dateStr}\n`;
       }
       
       response += `📍 **Location**: ${event.location}\n`;
