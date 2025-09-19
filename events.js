@@ -251,7 +251,15 @@ class EventsSystem {
           navigated = true;
         } catch (err) {
           console.log(`Navigation attempt ${attempt} failed: ${err.message}`);
-          if (attempt === 2) throw err;
+          if (attempt === 2) {
+            // If navigation completely fails, try a simpler approach
+            try {
+              await page.goto(config.EVENTS_FEED_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+              navigated = true;
+            } catch (err2) {
+              throw new Error(`Navigation failed after all attempts: ${err2.message}`);
+            }
+          }
         }
       }
 
@@ -387,6 +395,10 @@ class EventsSystem {
 
         // Parse each event element
         return eventElements.map(element => {
+          if (!element || !element.textContent) {
+            return null;
+          }
+          
           // First, try to find the actual event link by looking for clickable elements
           let eventLink = '';
           const clickableElements = element.querySelectorAll('a[href], [onclick], [data-href], [data-url]');
@@ -500,7 +512,9 @@ class EventsSystem {
         if (!title || title.length < 5 || 
             title.match(/^\d{1,2}:\d{2}\s*(am|pm|AM|PM)$/) ||
             title.match(/^LIVE\d{1,2}:\d{2}\s*(am|pm|AM|PM)$/) ||
-            title === timeText) {
+            title.match(/^LIVE\d{1,2}:\d{2}$/) ||
+            title === timeText ||
+            title.includes('LIVE') && title.length < 15) {
           return null;
         }
 
@@ -956,7 +970,9 @@ class EventsSystem {
       // Skip events that are just time fragments or UI elements
       if (event.title.match(/^\d{1,2}:\d{2}\s*(am|pm|AM|PM)$/) ||
           event.title.match(/^LIVE\d{1,2}:\d{2}\s*(am|pm|AM|PM)$/) ||
-          event.title.length < 5) {
+          event.title.match(/^LIVE\d{1,2}:\d{2}$/) ||
+          event.title.length < 5 ||
+          event.title.includes('LIVE') && event.title.length < 15) {
         return false;
       }
       
