@@ -7,7 +7,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "jest",
-    "postinstall": "npx puppeteer install"
+    "postinstall": "npx puppeteer install chrome@stable"
   },
   "keywords": [
     "telegram",
