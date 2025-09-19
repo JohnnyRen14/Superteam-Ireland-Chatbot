@@ -510,11 +510,12 @@ class EventsSystem {
 
         // Skip elements that are just time fragments or UI elements
         if (!title || title.length < 5 || 
-            title.match(/^\d{1,2}:\d{2}\s*(am|pm|AM|PM)$/) ||
-            title.match(/^LIVE\d{1,2}:\d{2}\s*(am|pm|AM|PM)$/) ||
+            title.match(/^\d{1,2}:\d{2}\s*(am|pm|AM|PM)?$/) ||
+            title.match(/^LIVE\d{1,2}:\d{2}\s*(am|pm|AM|PM)?$/) ||
             title.match(/^LIVE\d{1,2}:\d{2}$/) ||
             title === timeText ||
-            title.includes('LIVE') && title.length < 15) {
+            (title.includes('LIVE') && title.length < 15) ||
+            title.match(/^\d{1,2}:\d{2}$/)) {
           return null;
         }
 
@@ -576,7 +577,7 @@ class EventsSystem {
             elementText: element.textContent?.trim() || '',
             innerHTML: element.innerHTML
           };
-        }).filter(event => event.title && event.title.length > 3);
+        }).filter(event => event && event.title && event.title.length > 3);
       });
       }
 
@@ -968,11 +969,12 @@ class EventsSystem {
     const seen = new Set();
     return events.filter(event => {
       // Skip events that are just time fragments or UI elements
-      if (event.title.match(/^\d{1,2}:\d{2}\s*(am|pm|AM|PM)$/) ||
-          event.title.match(/^LIVE\d{1,2}:\d{2}\s*(am|pm|AM|PM)$/) ||
+      if (event.title.match(/^\d{1,2}:\d{2}\s*(am|pm|AM|PM)?$/) ||
+          event.title.match(/^LIVE\d{1,2}:\d{2}\s*(am|pm|AM|PM)?$/) ||
           event.title.match(/^LIVE\d{1,2}:\d{2}$/) ||
           event.title.length < 5 ||
-          event.title.includes('LIVE') && event.title.length < 15) {
+          (event.title.includes('LIVE') && event.title.length < 15) ||
+          event.title.match(/^\d{1,2}:\d{2}$/)) {
         return false;
       }
       
