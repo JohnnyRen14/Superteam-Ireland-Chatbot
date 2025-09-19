@@ -235,21 +235,31 @@ class EventsSystem {
 
       const page = await browser.newPage();
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+      // Increase timeouts for Render
+      page.setDefaultNavigationTimeout(120000);
+      page.setDefaultTimeout(60000);
       
       // Set viewport and wait for page to load
       await page.setViewport({ width: 1280, height: 720 });
       
       console.log('Navigating to Luma page...');
-      await page.goto(config.EVENTS_FEED_URL, { 
-        waitUntil: 'networkidle2',
-        timeout: 30000 
-      });
+      // Retry navigation once on timeout
+      let navigated = false;
+      for (let attempt = 1; attempt <= 2 && !navigated; attempt++) {
+        try {
+          await page.goto(config.EVENTS_FEED_URL, { waitUntil: 'networkidle2', timeout: 120000 });
+          navigated = true;
+        } catch (err) {
+          console.log(`Navigation attempt ${attempt} failed: ${err.message}`);
+          if (attempt === 2) throw err;
+        }
+      }
 
       // Wait for events to load - look for common event selectors
       console.log('Waiting for events to load...');
       try {
         await page.waitForSelector('[data-testid*="event"], .event-card, .event-item, [class*="event"], article, .card', { 
-          timeout: 10000 
+          timeout: 30000 
         });
       } catch (waitError) {
         console.log('No specific event selectors found, proceeding with general content...');

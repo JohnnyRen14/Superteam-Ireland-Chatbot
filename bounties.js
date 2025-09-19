@@ -135,20 +135,33 @@ class BountiesSystem {
       
       const page = await browser.newPage();
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+      // Increase navigation timeouts for Render
+      page.setDefaultNavigationTimeout(120000);
+      page.setDefaultTimeout(60000);
       
       console.log('Navigating to:', config.BOUNTIES_FEED_URL);
-      await page.goto(config.BOUNTIES_FEED_URL, { waitUntil: 'networkidle2' });
+      // Retry navigation once on timeout
+      let navigated = false;
+      for (let attempt = 1; attempt <= 2 && !navigated; attempt++) {
+        try {
+          await page.goto(config.BOUNTIES_FEED_URL, { waitUntil: 'networkidle2', timeout: 120000 });
+          navigated = true;
+        } catch (err) {
+          console.log(`Navigation attempt ${attempt} failed: ${err.message}`);
+          if (attempt === 2) throw err;
+        }
+      }
       
       // Wait for React/Next.js to render content
       await new Promise(resolve => setTimeout(resolve, 8000));
       
       // Wait for specific elements that indicate content has loaded
       try {
-        await page.waitForSelector('body', { timeout: 15000 });
+        await page.waitForSelector('body', { timeout: 30000 });
         // Wait for any potential bounty elements to load
         await page.waitForFunction(() => {
           return document.body.textContent.length > 1000;
-        }, { timeout: 10000 });
+        }, { timeout: 30000 });
       } catch (error) {
         console.log('Timeout waiting for content to load');
       }
