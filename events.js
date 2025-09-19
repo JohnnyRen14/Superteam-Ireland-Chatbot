@@ -13,7 +13,19 @@ class EventsSystem {
     try {
       console.log('Fetching events from Luma calendar...');
       
-      const events = await this.scrapeLumaEventsWithPuppeteer();
+      // Try simple HTTP scraping first (works better on Render free tier)
+      let events = await this.scrapeLumaEvents();
+      
+      if (events.length > 0) {
+        this.events = events;
+        this.lastFetch = new Date();
+        console.log(`Fetched ${events.length} real events from Luma (HTTP)`);
+        return events;
+      }
+      
+      // If HTTP scraping fails, try Puppeteer
+      console.log('HTTP scraping failed, trying Puppeteer...');
+      events = await this.scrapeLumaEventsWithPuppeteer();
       
       if (events.length > 0) {
         this.events = events;
@@ -21,7 +33,7 @@ class EventsSystem {
         console.log(`Fetched ${events.length} real events from Luma (Puppeteer)`);
         return events;
       } else {
-        // Fallback to sample events if Puppeteer fails
+        // Fallback to sample events if both methods fail
         console.log('No events found, using fallback events');
         const fallbackEvents = this.getFallbackEvents();
         this.events = fallbackEvents;

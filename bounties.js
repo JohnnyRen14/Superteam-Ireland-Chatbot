@@ -13,7 +13,19 @@ class BountiesSystem {
     try {
       console.log('Fetching bounties from Superteam Earn...');
       
-      const bounties = await this.fetchBountiesWithPuppeteer();
+      // Try simple HTTP scraping first (works better on Render free tier)
+      let bounties = await this.fetchBountiesWithAxios();
+      
+      if (bounties.length > 0) {
+        this.bounties = bounties;
+        this.lastFetch = new Date();
+        console.log(`Fetched ${bounties.length} bounties (HTTP)`);
+        return bounties;
+      }
+      
+      // If HTTP scraping fails, try Puppeteer
+      console.log('HTTP scraping failed, trying Puppeteer...');
+      bounties = await this.fetchBountiesWithPuppeteer();
       
       this.bounties = bounties;
       this.lastFetch = new Date();
@@ -357,28 +369,95 @@ class BountiesSystem {
 
   async fetchBountiesWithAxios() {
     try {
+      console.log('Fetching bounties with HTTP method:', config.BOUNTIES_FEED_URL);
+      
       const response = await axios.get(config.BOUNTIES_FEED_URL, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1'
+        },
+        timeout: 15000
       });
 
       const $ = cheerio.load(response.data);
       const bounties = [];
 
-      // Parse bounty cards
-      $('[class*="bounty"], [class*="card"], .item').each((i, element) => {
-        try {
-          const bounty = this.parseBountyElement($(element), $);
-          if (bounty) {
-            bounties.push(bounty);
-          }
-        } catch (error) {
-          console.log('Error parsing bounty element:', error.message);
-        }
-      });
+      // Look for bounty elements with multiple selectors
+      const selectors = [
+        '[class*="bounty"]',
+        '[class*="card"]',
+        '.item',
+        'article',
+        'section',
+        'div[class*="flex"]',
+        'div[class*="grid"]',
+        '[data-testid*="bounty"]',
+        '[data-testid*="card"]'
+      ];
 
-      return bounties;
+      for (const selector of selectors) {
+        const elements = $(selector);
+        if (elements.length > 0) {
+          console.log(`Found ${elements.length} elements with selector: ${selector}`);
+          
+          elements.each((i, element) => {
+            try {
+              const bounty = this.parseBountyElement($(element), $);
+              if (bounty && bounty.title && bounty.title.length > 5) {
+                bounties.push(bounty);
+              }
+            } catch (error) {
+              console.log('Error parsing bounty element:', error.message);
+            }
+          });
+          
+          if (bounties.length > 0) {
+            break; // Stop after first successful selector
+          }
+        }
+      }
+
+      // If no specific selectors work, try a broader approach
+      if (bounties.length === 0) {
+        console.log('No bounties found with specific selectors, trying broader approach...');
+        
+        // Look for any elements that might contain bounty information
+        $('*').each((index, element) => {
+          const $element = $(element);
+          const text = $element.text().trim();
+          
+          // Look for elements that might be bounties based on content
+          if (text.length > 20 && text.length < 500 && 
+              (text.toLowerCase().includes('superteam ireland') || 
+               text.toLowerCase().includes('bounty') ||
+               text.toLowerCase().includes('usdc') ||
+               text.toLowerCase().includes('prize') ||
+               text.toLowerCase().includes('reward')) &&
+              // Exclude UI elements
+              !text.toLowerCase().includes('search') &&
+              !text.toLowerCase().includes('filter') &&
+              !text.toLowerCase().includes('sort') &&
+              !text.toLowerCase().includes('results') &&
+              !text.toLowerCase().includes('found 0')) {
+            
+            const bounty = this.parseBountyElement($element, $);
+            if (bounty && bounty.title && bounty.title.length > 5) {
+              bounties.push(bounty);
+            }
+          }
+        });
+      }
+
+      // Remove duplicates
+      const uniqueBounties = this.removeDuplicateBounties(bounties);
+      console.log(`Found ${uniqueBounties.length} unique bounties from HTTP scraping`);
+      
+      return uniqueBounties;
+      
     } catch (error) {
       console.error('Error fetching bounties with axios:', error.message);
       return [];
@@ -476,6 +555,18 @@ class BountiesSystem {
     }
 
     return response;
+  }
+
+  removeDuplicateBounties(bounties) {
+    const seen = new Set();
+    return bounties.filter(bounty => {
+      const key = `${bounty.title}_${bounty.prize}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
   }
 
   getBountiesStatus() {
